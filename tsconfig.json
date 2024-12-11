@@ -1,0 +1,31 @@
+{
+    "compilerOptions": {
+        "baseUrl": ".",  // Base directory for resolving non-relative module names
+        "paths": {
+            "@src/*": ["src/*"],
+            "@models/*": ["src/app/models/*"],
+            "@controllers/*": ["src/app/controllers/*"],
+            "@services/*": ["src/app/services/*"],
+            "@utils/*": ["src/app/utils/*"]
+        },
+        "target": "ES6",  // Set JavaScript target version to ES6
+        "module": "commonjs",  // Module system used by Node.js
+        "outDir": "./dist",  // Directory to output transpiled JavaScript files
+        "rootDir": ".",  // Directory containing TypeScript source files
+        "strict": true,  // Enable strict type-checking options
+        "esModuleInterop": true,  // Enables compatibility with CommonJS and ES modules
+        "skipLibCheck": true,  // Skip type checking of declaration files
+        "resolveJsonModule": true,  // Allows importing JSON files
+        "moduleResolution": "node",  // Use Node's module resolution algorithm
+        "allowSyntheticDefaultImports": true,  // Allows default imports from modules with no default export
+        "experimentalDecorators": true,  // Enables the use of decorators
+        "emitDecoratorMetadata": true  // Adds metadata to support dependency injection libraries
+    },
+    "include": [
+        "src/**/*.ts",  // Include all TypeScript files in the src directory
+        "tests/**/*.ts"  // Include all TypeScript test files
+    ],
+    "exclude": [
+        "node_modules"  // Exclude node_modules to avoid type-checking third-party code
+    ]
+}

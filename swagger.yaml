@@ -1,0 +1,1011 @@
+openapi: 3.0.0
+info:
+  title: Virtual and Physical Database Management API
+  description: This API allows users to manage virtual and physical databases, collections, and records for mongo and physical mysql databases.
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000/api/v1
+    description: Test server for Swagger UI
+tags:
+  - name: Authentication
+    description: Authentication endpoints
+  - name: Mongo Virtual Databases
+    description: Database management for Mongo virtual databases
+  - name: Mongo Physical Databases
+    description: Database management for Mongo physical databases
+  - name: Mongo Virtual Database Collections
+    description: Collection management within Mongo virtual databases
+  - name: Mongo Physical Database Collections
+    description: Collection management within Mongo physical databases
+  - name: Mongo Virtual Database Collection Records
+    description: Record management within Mongo virtual databases
+  - name: Mongo Physical Database Collection Records
+    description: Record management within Mongo physical databases
+
+# Define security scheme for the Bearer token
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "Enter your Bearer token in the format **Bearer <token>**"
+
+# Define global security requirement (optional)
+security:
+  - BearerAuth: []
+
+paths:
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  example: "JohnDoe"
+                email:
+                  type: string
+                  example: "johndoe@example.com"
+                password:
+                  type: string
+                  example: "password123"
+      responses:
+        "201":
+          description: User registered successfully
+        "400":
+          description: Validation errors
+        "500":
+          description: Server error
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  example: "johndoe@example.com"
+                password:
+                  type: string
+                  example: "password123"
+      responses:
+        "200":
+          description: User logged in successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        "400":
+          description: Invalid credentials
+        "500":
+          description: Server error
+
+  /mongo/virtual/databases:
+    post:
+      tags:
+        - Mongo Virtual Databases
+      summary: Create a mongo new virtual database
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dbName:
+                  type: string
+                  example: "myVirtualDB"
+      responses:
+        "201":
+          description: Virtual database created successfully
+        "400":
+          description: Database name is required
+        "500":
+          description: Error creating database
+    get:
+      tags:
+        - Mongo Virtual Databases
+      summary: Get all mongo virtual databases for the authenticated user
+      responses:
+        "200":
+          description: List of virtual databases
+        "500":
+          description: Error fetching databases
+
+  /mongo/virtual/databases/{dbId}:
+    get:
+      summary: Get a specific virtual database by ID
+      description: Retrieve information about a specific mongo virtual database by its unique ID.
+      tags:
+        - Mongo Virtual Databases
+      parameters:
+        - name: dbId
+          in: path
+          required: true
+          description: The unique identifier of the virtual database.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Virtual database retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dbId:
+                    type: string
+                  dbName:
+                    type: string
+                  userId:
+                    type: string
+                  createdAt:
+                    type: string
+                    format: date-time
+        "404":
+          description: Database not found.
+        "500":
+          description: Error fetching virtual database.
+    delete:
+      summary: Delete a specific virtual database by ID
+      description: Delete a specific virtual database by its unique ID.
+      tags:
+        - Mongo Virtual Databases
+      parameters:
+        - name: dbId
+          in: path
+          required: true
+          description: The unique identifier of the virtual database.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Virtual database deleted successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "404":
+          description: Database not found.
+        "500":
+          description: Error deleting virtual database.
+
+  /mongo/virtual/databases/{dbId}/collections:
+    post:
+      tags:
+        - Mongo Virtual Database Collections
+      summary: Create a new collection in a virtual database
+      parameters:
+        - name: dbId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the virtual database where the collection will be created
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                collectionName:
+                  type: string
+                  example: "myCollection"
+                fields:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      fieldName:
+                        type: string
+                        example: "title"
+                      type:
+                        type: string
+                        enum: ["string", "number", "boolean", "date", "enum"]
+                        example: "string"
+                      required:
+                        type: boolean
+                        example: true
+      responses:
+        "201":
+          description: Collection created successfully
+        "400":
+          description: Collection name and fields are required
+        "404":
+          description: Database not found
+        "500":
+          description: Error creating collection
+    get:
+      tags:
+        - Mongo Virtual Database Collections
+      summary: Get all collections in a virtual database
+      parameters:
+        - name: dbId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the virtual database from which to retrieve all collections
+      responses:
+        "200":
+          description: List of collections in the virtual database
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    _id:
+                      type: string
+                    collectionName:
+                      type: string
+                    fields:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          fieldName:
+                            type: string
+                          type:
+                            type: string
+                          required:
+                            type: boolean
+                    dbType:
+                      type: string
+                    createdAt:
+                      type: string
+                      format: date-time
+        "404":
+          description: Database not found
+        "500":
+          description: Error fetching collections
+
+  /mongo/virtual/databases/{dbId}/collections/{colId}:
+    get:
+      tags:
+        - Mongo Virtual Database Collections
+      summary: Get a specific collection by ID in a virtual database
+      parameters:
+        - name: dbId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the virtual database
+        - name: colId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the collection to retrieve
+      responses:
+        "200":
+          description: A collection object
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _id:
+                    type: string
+                  collectionName:
+                    type: string
+                  fields:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        fieldName:
+                          type: string
+                        type:
+                          type: string
+                        required:
+                          type: boolean
+                  dbType:
+                    type: string
+                  createdAt:
+                    type: string
+                    format: date-time
+        "404":
+          description: Collection not found
+        "500":
+          description: Error fetching the collection
+    delete:
+      tags:
+        - Mongo Virtual Database Collections
+      summary: Delete a specific collection by ID in a virtual database
+      parameters:
+        - name: dbId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the virtual database
+        - name: colId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the collection to delete
+      responses:
+        "200":
+          description: Collection deleted successfully
+        "404":
+          description: Collection not found
+        "500":
+          description: Error deleting the collection
+
+  /mongo/virtual/databases/{dbId}/collections/{colId}/records:
+    post:
+      tags:
+        - Mongo Virtual Database Collection Records
+      summary: Add a new record to a collection in a virtual database
+      parameters:
+        - name: dbId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the virtual database containing the collection
+        - name: colId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the collection to which the record will be added
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  type: object
+                  description: The data to be added as a record
+                  example:
+                    title: "My Record"
+                    content: "This is the record content"
+      responses:
+        "201":
+          description: Record added successfully
+        "400":
+          description: Collection not found or validation errors
+        "500":
+          description: Error adding record
+    get:
+      tags:
+        - Mongo Virtual Database Collection Records
+      summary: Get all records in a collection in a virtual database
+      parameters:
+        - name: dbId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the virtual database containing the collection
+        - name: colId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the collection containing the records
+      responses:
+        "200":
+          description: List of records in the collection
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    _id:
+                      type: string
+                    data:
+                      type: object
+                    createdAt:
+                      type: string
+                      format: date-time
+        "404":
+          description: Collection not found
+        "500":
+          description: Error fetching records
+
+  /mongo/virtual/databases/{dbId}/collections/{colId}/records/{recId}:
+    get:
+      tags:
+        - Mongo Virtual Database Collection Records
+      summary: Get a specific record by ID from a collection in a virtual database
+      parameters:
+        - name: dbId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the virtual database containing the collection
+        - name: colId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the collection containing the record
+        - name: recId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the record to retrieve
+      responses:
+        "200":
+          description: A record object
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _id:
+                    type: string
+                  data:
+                    type: object
+                  createdAt:
+                    type: string
+                    format: date-time
+        "404":
+          description: Record not found
+        "500":
+          description: Error fetching the record
+    put:
+      tags:
+        - Mongo Virtual Database Collection Records
+      summary: Update a specific record in a collection in a virtual database
+      parameters:
+        - name: dbId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the virtual database containing the collection
+        - name: colId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the collection containing the record
+        - name: recId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the record to update
+      requestBody:
+        description: Record object to update
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  type: object
+                  description: The updated data for the record
+                  example:
+                    title: "Updated Record Title"
+                    content: "Updated record content"
+      responses:
+        "200":
+          description: Record updated successfully
+        "404":
+          description: Record not found
+        "500":
+          description: Error updating the record
+    delete:
+      tags:
+        - Mongo Virtual Database Collection Records
+      summary: Delete a record by ID from a collection in a virtual database
+      parameters:
+        - name: dbId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the virtual database containing the collection
+        - name: colId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the collection containing the record
+        - name: recId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the record to delete
+      responses:
+        "200":
+          description: Record deleted successfully
+        "404":
+          description: Record not found
+        "500":
+          description: Error deleting the record
+
+  /mongo/physical/databases:
+    post:
+      tags:
+        - Mongo Physical Databases
+      summary: Create a new physical database
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dbName:
+                  type: string
+                  example: "myPhysicalDB"
+      responses:
+        "201":
+          description: Physical database created successfully
+        "400":
+          description: Database name is required
+        "500":
+          description: Error creating database
+    get:
+      tags:
+        - Mongo Physical Databases
+      summary: Get all physical databases for the authenticated user
+      responses:
+        "200":
+          description: List of physical databases
+        "500":
+          description: Error fetching databases
+
+  /mongo/physical/databases/{dbId}:
+    get:
+      summary: Get a specific physical database by ID
+      description: Retrieve information about a specific physical database by its unique ID.
+      tags:
+        - Mongo Physical Databases
+      parameters:
+        - name: dbId
+          in: path
+          required: true
+          description: The unique identifier of the physical database.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Physical database retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dbId:
+                    type: string
+                  dbName:
+                    type: string
+                  userId:
+                    type: string
+                  connectionString:
+                    type: string
+                  createdAt:
+                    type: string
+                    format: date-time
+        "404":
+          description: Database not found.
+        "500":
+          description: Error fetching physical database.
+    delete:
+      summary: Delete a specific physical database by ID
+      description: Delete a specific physical database by its unique ID.
+      tags:
+        - Mongo Physical Databases
+      parameters:
+        - name: dbId
+          in: path
+          required: true
+          description: The unique identifier of the physical database.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Physical database deleted successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "404":
+          description: Database not found.
+        "500":
+          description: Error deleting physical database.
+
+  /mongo/physical/databases/{dbId}/collections:
+    post:
+      tags:
+        - Mongo Physical Database Collections
+      summary: Create a new collection in a physical database
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dbId:
+                  type: string
+                  example: "60c72b2f5f1b2c001f1e4f0b"
+                collectionName:
+                  type: string
+                  example: "myCollection"
+                useValidator:
+                  type: boolean
+                  example: true
+                fields:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      fieldName:
+                        type: string
+                        example: "title"
+                      type:
+                        type: string
+                        enum: ["string", "number", "boolean", "date", "enum"]
+                        example: "string"
+                      required:
+                        type: boolean
+                        example: true
+      responses:
+        "201":
+          description: Collection created successfully
+        "400":
+          description: Collection name and fields are required
+        "404":
+          description: Database not found
+        "500":
+          description: Error creating collection
+    get:
+      tags:
+        - Mongo Physical Database Collections
+      summary: Get all collections in a physical database
+      parameters:
+        - name: dbId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the physical database from which to retrieve all collections
+      responses:
+        "200":
+          description: List of collections in the physical database
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    _id:
+                      type: string
+                    collectionName:
+                      type: string
+                    fields:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          fieldName:
+                            type: string
+                          type:
+                            type: string
+                          required:
+                            type: boolean
+                    dbType:
+                      type: string
+                    createdAt:
+                      type: string
+                      format: date-time
+        "404":
+          description: Database not found
+        "500":
+          description: Error fetching collections
+
+  /mongo/physical/databases/{dbId}/collections/{colId}:
+    get:
+      tags:
+        - Mongo Physical Database Collections
+      summary: Get a specific collection by ID in a physical database
+      parameters:
+        - name: dbId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the physical database
+        - name: colId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the collection to retrieve
+      responses:
+        "200":
+          description: A collection object
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _id:
+                    type: string
+                  collectionName:
+                    type: string
+                  fields:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        fieldName:
+                          type: string
+                        type:
+                          type: string
+                        required:
+                          type: boolean
+                  dbType:
+                    type: string
+                  createdAt:
+                    type: string
+                    format: date-time
+        "404":
+          description: Collection not found
+        "500":
+          description: Error fetching the collection
+    delete:
+      tags:
+        - Mongo Physical Database Collections
+      summary: Delete a specific collection by ID in a physical database
+      parameters:
+        - name: dbId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the physical database
+        - name: colId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the collection to delete
+      responses:
+        "200":
+          description: Collection deleted successfully
+        "404":
+          description: Collection not found
+        "500":
+          description: Error deleting the collection
+
+  /mongo/physical/databases/{dbId}/collections/{colId}/records:
+    post:
+      tags:
+        - Mongo Physical Database Collection Records
+      summary: Add a new record to a collection in a physical database
+      parameters:
+        - name: dbId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the physical database containing the collection
+        - name: colId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the collection to which the record will be added
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  type: object
+                  description: The data to be added as a record
+                  example:
+                    title: "My Record"
+                    content: "This is the record content"
+      responses:
+        "201":
+          description: Record added successfully
+        "400":
+          description: Collection not found or validation errors
+        "500":
+          description: Error adding record
+    get:
+      tags:
+        - Mongo Physical Database Collection Records
+      summary: Get all records in a collection in a physical database
+      parameters:
+        - name: dbId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the physical database containing the collection
+        - name: colId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the collection containing the records
+      responses:
+        "200":
+          description: List of records in the collection
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    _id:
+                      type: string
+                    data:
+                      type: object
+                    createdAt:
+                      type: string
+                      format: date-time
+        "404":
+          description: Collection not found
+        "500":
+          description: Error fetching records
+
+  /mongo/physical/databases/{dbId}/collections/{colId}/records/{recId}:
+    get:
+      tags:
+        - Mongo Physical Database Collection Records
+      summary: Get a specific record by ID from a collection in a physical database
+      parameters:
+        - name: dbId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the physical database containing the collection
+        - name: colId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the collection containing the record
+        - name: recId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the record to retrieve
+      responses:
+        "200":
+          description: A record object
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _id:
+                    type: string
+                  data:
+                    type: object
+                  createdAt:
+                    type: string
+                    format: date-time
+        "404":
+          description: Record not found
+        "500":
+          description: Error fetching the record
+    put:
+      tags:
+        - Mongo Physical Database Collection Records
+      summary: Update a specific record by ID in a collection in a physical database
+      parameters:
+        - name: dbId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the physical database containing the collection
+        - name: colId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the collection containing the record
+        - name: recId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the record to update
+      requestBody:
+        description: Record object to update
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  type: object
+                  description: The updated data for the record
+                  example:
+                    title: "Updated Record Title"
+                    content: "Updated record content"
+      responses:
+        "200":
+          description: Record updated successfully
+        "404":
+          description: Record not found
+        "500":
+          description: Error updating the record
+    delete:
+      tags:
+        - Mongo Physical Database Collection Records
+      summary: Delete a record by ID from a collection in a physical database
+      parameters:
+        - name: dbId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the physical database containing the collection
+        - name: colId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the collection containing the record
+        - name: recId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the record to delete
+      responses:
+        "200":
+          description: Record deleted successfully
+        "404":
+          description: Record not found
+        "500":
+          description: Error deleting the record
