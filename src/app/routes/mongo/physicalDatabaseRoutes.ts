@@ -1,3 +1,5 @@
+// src/app/routes/mongo/physicalDatabaseRoutes.ts
+
 import express, { Router } from 'express';
 import PhysicalDatabaseController from '../../controllers/mongo/PhysicalDatabaseController';
 import { validateAndAuthorizeDatabaseAccess } from '../../middleware/authorizationMiddleware';

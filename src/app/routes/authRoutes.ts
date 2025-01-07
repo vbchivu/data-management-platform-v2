@@ -1,3 +1,5 @@
+// src/app/routes/authRoutes.ts
+
 import { Router } from 'express';
 import { body } from 'express-validator';
 import AuthController from '../controllers/AuthController';

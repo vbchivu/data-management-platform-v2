@@ -6,7 +6,6 @@ import logger from '../../config/winstonLogger';
 import url from 'url';
 
 dotenv.config();
-
 class DatabaseConnectionManager {
     private static appConnection: Connection | null = null;
     private static physicalConnections: Map<string, Connection> = new Map();
@@ -134,14 +133,8 @@ class DatabaseConnectionManager {
      * @param connectionString The connection string for the MySQL database.
      */
     public static async connectToMySQLDatabase(connectionString: string): Promise<Pool> {
-        if (DatabaseConnectionManager.mysqlConnections.has(connectionString)) {
-            logger.info(`Reusing existing connection to MySQL database: ${connectionString}`);
-            return DatabaseConnectionManager.mysqlConnections.get(connectionString) as Pool;
-        }
-
         try {
             const parsedUrl = new url.URL(connectionString);
-
             if (!parsedUrl.username || !parsedUrl.password || !parsedUrl.pathname) {
                 throw new Error('Invalid MySQL connection string format. Ensure the format includes user, password, and database.');
             }
@@ -149,8 +142,13 @@ class DatabaseConnectionManager {
             const user = parsedUrl.username;
             const password = parsedUrl.password;
             const host = parsedUrl.hostname;
-            const port = parsedUrl.port ? Number(parsedUrl.port) : 3306; // Default to port 3306 if not specified
+            const port = parsedUrl.port ? Number(parsedUrl.port) : 3306;
             const database = parsedUrl.pathname.substring(1); // Remove leading '/' from pathname to get database name
+            const connectionKey = `${user}:${process.env.MYSQL_HOST}:${database}`;
+            if (DatabaseConnectionManager.mysqlConnections.has(connectionKey)) {
+                logger.info(`Reusing existing connection to MySQL database: ${connectionKey}`);
+                return DatabaseConnectionManager.mysqlConnections.get(connectionKey) as Pool;
+            }
 
             const pool = await retry(async () => {
                 return mysql.createPool({
@@ -170,7 +168,7 @@ class DatabaseConnectionManager {
             });
 
             logger.info(`Connected to MySQL database with connection string: ${connectionString}`);
-            DatabaseConnectionManager.mysqlConnections.set(connectionString, pool);
+            DatabaseConnectionManager.mysqlConnections.set(connectionKey, pool);
             return pool;
         } catch (err) {
             logger.error('Error connecting to MySQL database: ', (err as Error).message);
@@ -194,8 +192,8 @@ class DatabaseConnectionManager {
                 const pool = mysql.createPool({
                     host: process.env.MYSQL_HOST,
                     port: Number(process.env.MYSQL_PORT) || 3306, // Default to 3306 if MYSQL_PORT not defined
-                    user: process.env.MYSQL_USER,
-                    password: process.env.MYSQL_PASSWORD,
+                    user: 'root',
+                    password: process.env.MYSQL_ROOT_PASSWORD,
                     database,
                     connectionLimit: 10, // Maximum number of connections in the pool
                 });
@@ -212,9 +210,9 @@ class DatabaseConnectionManager {
 
                 const pool = mysql.createPool({
                     host: process.env.MYSQL_HOST,
-                    port: Number(process.env.MYSQL_PORT) || 3306, // Default to 3306 if MYSQL_PORT not defined
-                    user: process.env.MYSQL_USER,
-                    password: process.env.MYSQL_PASSWORD,
+                    port: Number(process.env.MYSQL_PORT) || 3306,
+                    user: 'root',
+                    password: process.env.MYSQL_ROOT_PASSWORD,
                     connectionLimit: 10, // Maximum number of connections in the pool
                 });
 

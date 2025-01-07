@@ -20,6 +20,7 @@ coverage/
 
 # Sensitive environment files
 .env
+.env.old
 *.key
 *.csr
 *.crt

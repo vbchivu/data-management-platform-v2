@@ -1,3 +1,5 @@
+// src/app/routes/mysql/physicalDatabaseRoutes.ts
+
 import express, { Router } from 'express';
 import PhysicalDatabaseController from '../../controllers/mysql/PhysicalDatabaseController';
 import asyncMiddleware from '../../middleware/asyncMiddleware';

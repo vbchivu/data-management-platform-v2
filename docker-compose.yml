@@ -1,0 +1,134 @@
+services:
+  # ---------------------------------------------------------------------------
+  # BACKEND (Node.js application)
+  # ---------------------------------------------------------------------------
+  backend-environment:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NODE_ENV: production
+    container_name: data-mgm-backend
+    command: >
+      sh -c "npm start"
+    environment:
+      - NODE_ENV=production
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRY=${JWT_EXPIRY}
+      - MONGO_ADMIN_URI=${MONGO_ADMIN_URI}
+      - MONGO_APP_VIRTUAL_DB_URI=${MONGO_APP_VIRTUAL_DB_URI}
+      - MYSQL_PHYSICAL_DB_ID=${MYSQL_PHYSICAL_DB_ID}
+      - MONGO_PORT=${MONGO_PORT}
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_PORT=${MYSQL_PORT}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MONGO_PHYSICAL_DB_URI_TEMPLATE=${MONGO_PHYSICAL_DB_URI_TEMPLATE}
+      - MYSQL_PHYSICAL_DB_URI_TEMPLATE=${MYSQL_PHYSICAL_DB_URI_TEMPLATE}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongo
+      - app_db
+    networks:
+      - shared-network
+
+  backend-environment-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NODE_ENV: development
+    container_name: data-mgm-backend-dev
+    command: >
+      sh -c "npm run dev"
+    environment:
+      - NODE_ENV=development
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRY=${JWT_EXPIRY}
+      - MONGO_ADMIN_URI=${MONGO_ADMIN_URI}
+      - MONGO_APP_VIRTUAL_DB_URI=${MONGO_APP_VIRTUAL_DB_URI}
+      - MYSQL_PHYSICAL_DB_ID=${MYSQL_PHYSICAL_DB_ID}
+      - MONGO_PORT=${MONGO_PORT}
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_PORT=${MYSQL_PORT}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MONGO_PHYSICAL_DB_URI_TEMPLATE=${MONGO_PHYSICAL_DB_URI_TEMPLATE}
+      - MYSQL_PHYSICAL_DB_URI_TEMPLATE=${MYSQL_PHYSICAL_DB_URI_TEMPLATE}
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongo
+      - app_db
+    networks:
+      - shared-network
+
+  # ---------------------------------------------------------------------------
+  # MONGO
+  # ---------------------------------------------------------------------------
+  mongo:
+    image: mongo:latest
+    container_name: data-mgm-mongo
+    ports:
+      - "27019:27017"
+    command: ["mongod", "--bind_ip_all"]
+    environment:
+      # So the official mongo image runs scripts in /docker-entrypoint-initdb.d
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASS}
+    volumes:
+      - ./mongo-init:/docker-entrypoint-initdb.d
+    networks:
+      - shared-network
+
+  # ---------------------------------------------------------------------------
+  # MYSQL
+  # ---------------------------------------------------------------------------
+  app_db:
+    image: mysql:5.7
+    container_name: data-mgm-backend-db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      # The official mysql image will create this database and user if specified:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3308:3306"
+    volumes:
+      - app_db_data:/var/lib/mysql
+      - ./db_init_mysql:/docker-entrypoint-initdb.d
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "root",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "root",
+          "-p${MYSQL_ROOT_PASSWORD}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - shared-network
+
+# ---------------------------------------------------------------------------
+# VOLUMES & NETWORK
+# ---------------------------------------------------------------------------
+volumes:
+  app_db_data:
+
+networks:
+  shared-network:
+    external: true
+    name: shared-network

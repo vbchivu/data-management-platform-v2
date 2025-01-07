@@ -8,89 +8,89 @@ import MySQLSchemaMetadata, { IMySQLSchemaMetadata } from '../../models/mysql/My
 import { FieldPacket } from 'mysql2';
 
 class PhysicalDatabaseService {
-    /**
-     * Create a new physical MySQL database for the user
-     */
     static async createDatabase(user: IUser, dbName: string, defaultSchema: string): Promise<IMySQLPhysicalDatabase> {
         logger.info(`Starting the creation process for physical MySQL database '${dbName}' for user '${user._id}'`);
 
-        // Step 1: Check if a physical database with the given name already exists for the user
+        // Validate database and schema names
+        if (!/^[a-zA-Z0-9_]+$/.test(dbName) || !/^[a-zA-Z0-9_]+$/.test(defaultSchema)) {
+            throw new Error('Invalid database or schema name. Only alphanumeric characters and underscores are allowed.');
+        }
+
+        // Check if the database already exists for the user
         const existingDatabase = await MySQLPhysicalDatabase.findOne({ userId: user._id, dbName });
         if (existingDatabase) {
             throw new Error('A database with this name already exists for the user.');
         }
 
-        // Step 2: Check if the user already has credentials for the current database
+        // Check for existing credentials
         const existingCredentials = user.mysqlCredentials?.find((cred) => cred.dbName === dbName);
         if (existingCredentials) {
             logger.info(`User '${user._id}' already has MySQL credentials for database '${dbName}'.`);
             throw new Error('User already has MySQL credentials for this database');
         }
 
-        // Step 3: Generate new credentials
-        let username = `user_${Math.random().toString(36).slice(2, 10)}`; // Unique username not using the dbName
-        let plainPassword = `password_${Math.random().toString(36).slice(-8)}`; // Generate a simple random password
-        let hashedPassword = await bcrypt.hash(plainPassword, 10);
+        // Generate credentials
+        const username = `user_${Math.random().toString(36).slice(2, 10)}`;
+        const plainPassword = require('crypto').randomBytes(12).toString('base64').slice(0, 16);
+        const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
-        // Step 4: Create the MySQL user with restricted privileges for accessing the specific database
+        // Create the database and user in a transaction
         const adminPool = await DatabaseConnectionManager.connectAsAdminToMySQLDatabase();
-        await adminPool.query(`CREATE USER '${username}'@'%' IDENTIFIED BY '${plainPassword}'`);
-        await adminPool.query(`GRANT ALL PRIVILEGES ON ${defaultSchema}.* TO '${username}'@'%'`);
-        await adminPool.query(`FLUSH PRIVILEGES`);
-        logger.info(`MySQL user '${username}' created successfully with access to database '${dbName}', default schema '${defaultSchema}'`);
+        const pool = await adminPool.getConnection();
+        try {
+            await pool.beginTransaction();
 
-        // Step 5: Update user credentials in MongoDB application database
-        const newCredential = {
-            dbName,
-            username,
-            password: hashedPassword,
-        };
-        if (!user.mysqlCredentials) {
-            user.mysqlCredentials = [newCredential];
-        } else {
-            user.mysqlCredentials.push(newCredential);
+            // Create the database
+            await pool.query('CREATE DATABASE ??', [defaultSchema]);
+
+            // Create the MySQL user
+            await pool.query('CREATE USER ?@? IDENTIFIED BY ?', [username, '%', plainPassword]);
+
+            // Grant privileges
+            await pool.query('GRANT ALL PRIVILEGES ON ??.* TO ?@?', [defaultSchema, username, '%']);
+            await pool.query('FLUSH PRIVILEGES');
+
+            await pool.commit();
+            logger.info(`Database '${defaultSchema}' and user '${username}' created successfully.`);
+        } catch (err) {
+            await pool.rollback();
+            logger.error(`Failed to create database '${defaultSchema}' or user '${username}': ${err}`);
+            throw err;
+        } finally {
+            pool.release();
         }
+
+        // Save credentials in MongoDB
+        user.mysqlCredentials = user.mysqlCredentials || [];
+        user.mysqlCredentials.push({ dbName, username, password: hashedPassword });
         await user.save();
 
-        // Step 6: Generate a connection string for the new database
+        // Save metadata
         const connectionString = generatePhysicalDbConnectionString('mysql', {
             dbName,
             user: username,
-            password: plainPassword
+            password: plainPassword,
         });
-
-        // Step 7: Create the physical MySQL database
-        await adminPool.query(`CREATE DATABASE ${defaultSchema}`);
-        logger.info(`Physical MySQL database '${dbName}' created successfully with default schema '${defaultSchema}'`);
-
-        // Step 8: Store metadata in MongoDB, including the hashed password
         const newDatabase = new MySQLPhysicalDatabase({
             userId: user._id,
             name: dbName,
             defaultSchema,
             connectionString,
-            dbUser: {
-                username,
-                password: hashedPassword, // Store hashed password in MongoDB
-            }
+            dbUser: { username, password: hashedPassword },
         });
-
         await newDatabase.save();
-        logger.info(`Physical MySQL database '${dbName}' and dedicated user '${username}' created successfully for user '${user._id}'`);
 
-        // Step 9: Create the MySQLSchemaMetadata entry for the default schema
         const newDatabaseSchema = new MySQLSchemaMetadata({
             userId: user._id,
             databaseId: newDatabase._id,
             name: defaultSchema,
         });
-
         await newDatabaseSchema.save();
-        logger.info(`Default schema '${defaultSchema}' created successfully for physical MySQL database '${dbName}'`);
 
+        logger.info(`Database '${dbName}' with default schema '${defaultSchema}' created successfully for user '${user._id}'`);
         return newDatabase;
-
     }
+
 
     static async createNewSchema(mysqlPhysicalDb: IMySQLPhysicalDatabase, user: IUser, schemaName: string): Promise<IMySQLSchemaMetadata> {
         logger.info(`Starting the creation process for schema '${schemaName}' for physical MySQL database '${mysqlPhysicalDb.name}'`);

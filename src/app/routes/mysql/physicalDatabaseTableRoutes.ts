@@ -1,3 +1,5 @@
+// src/app/routes/mysql/physicalDatabaseTableRoutes.ts
+
 import express, { Router } from 'express';
 import PhysicalDatabaseTableController from '../../controllers/mysql/PhysicalDatabaseTableController';
 
